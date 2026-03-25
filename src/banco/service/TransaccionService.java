@@ -12,6 +12,7 @@ import banco.repository.CuentaRepository;
 import banco.repository.TransaccionRepository;
 import banco.repository.UsuarioRepository;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -84,10 +85,10 @@ public class TransaccionService {
         return transaccionRepository.findByCuenta(cuenta);
     }
 
-    public Set<Transaccion> obtenerHistorialPorUsuario(int idUser){
-        Usuario usuario = usuarioRepository.findById(idUser)
+    public Set<Transaccion> obtenerHistorialPorUsuario(int usuarioId){
+        Usuario user = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
-        return transaccionRepository.findByUser(usuario);
+        return transaccionRepository.findByUser(user);
     }
 
     public Set<Transaccion> obtenerTransaccionesPorTipo(TipoTransaccion transaccion){
@@ -99,21 +100,52 @@ public class TransaccionService {
         }
         return resultado;
     }
+    public Set<Transaccion> obtenerTransaccionesPorTipoCuenta(TipoTransaccion tipo, int cuentaId){
+        Set<Transaccion> resultado = new HashSet<>();
+        CuentaBancaria cuenta = cuentaRepository.findCuentaById(cuentaId)
+                .orElseThrow(() -> new CuentaNoEncontradaException("Cuenta no encontrada"));
+        for (Transaccion t: transaccionRepository.findAll()){
+            boolean esTipoCorrecto = t.getTipo() == tipo;
+            boolean perteneceUsuario = t.getOrigen().equals(cuenta) || t.getDestino() != null && t.getDestino().equals(cuenta);
 
-    // idea de codigo, crear transacciones por tipo y idUsuario
-//    public Set<Transaccion> obtenerTransaccionesPorTipoUsuario(int usuarioId, TipoTransaccion tipo){
-//        Set<Transaccion> resultado = new HashSet<>();
-//        Usuario user = usuarioRepository
-//                .findById(usuarioId)
-//                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
-//        for (Transaccion t: transaccionRepository.findAll()){
-//            if (t.getTipo() == tipo &&
-//                    t.getOrigen().getUsuario().equals(user) ||
-//            ){
-//                resultado.add(t);
-//            }
-//        }
-//        return resultado;
+            if (esTipoCorrecto && perteneceUsuario){
+                resultado.add(t);
+            }
+        }
+        return resultado;
+    }
+
+    public Set<Transaccion> obtenerTransaccionesPorTipoUsuario(TipoTransaccion tipo, int usuarioId){
+        Set<Transaccion> resultado = new HashSet<>();
+        Usuario user = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
+        for (Transaccion t: transaccionRepository.findAll()){
+            boolean esTipoCorrecto = t.getTipo() == tipo;
+            boolean esOrigen = t.getOrigen().getUsuario().equals(user);
+            boolean esDestino = t.getDestino() != null && t.getDestino().getUsuario().equals(user);
+            boolean perteneceUsuario = esDestino || esDestino;
+//            boolean pertenceUsuario = t.getOrigen().getUsuario().equals(user) ||
+//                                      t.getDestino() != null && t.getDestino().getUsuario().equals(user);
+
+            if (esTipoCorrecto && perteneceUsuario){
+                resultado.add(t);
+            }
+        }
+        return resultado;
+    }
+
+    public Set<Transaccion> obtenerTransaccionesMayoresA(double monto){
+        Set<Transaccion> resultado = new HashSet<>();
+        for (Transaccion t: transaccionRepository.findAll()){
+            if (t.getMonto() > monto){
+                resultado.add(t);
+            }
+        }
+        return resultado;
+    }
+
+//    public Set<Transaccion> ordenarTransaccionesPorFecha(LocalDateTime fecha){
+//
 //    }
 
 
