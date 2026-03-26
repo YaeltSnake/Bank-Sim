@@ -13,9 +13,8 @@ import banco.repository.TransaccionRepository;
 import banco.repository.UsuarioRepository;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+
 
 public class TransaccionService {
     private final CuentaRepository cuentaRepository;
@@ -106,8 +105,9 @@ public class TransaccionService {
                 .orElseThrow(() -> new CuentaNoEncontradaException("Cuenta no encontrada"));
         for (Transaccion t: transaccionRepository.findAll()){
             boolean esTipoCorrecto = t.getTipo() == tipo;
-            boolean perteneceUsuario = t.getOrigen().equals(cuenta) || t.getDestino() != null && t.getDestino().equals(cuenta);
-
+            boolean esOrigen = t.getOrigen().equals(cuenta);
+            boolean esDestino = t.getDestino() != null && t.getDestino().equals(cuenta);
+            boolean perteneceUsuario = esOrigen || esDestino;
             if (esTipoCorrecto && perteneceUsuario){
                 resultado.add(t);
             }
@@ -124,9 +124,9 @@ public class TransaccionService {
             boolean esOrigen = t.getOrigen().getUsuario().equals(user);
             boolean esDestino = t.getDestino() != null && t.getDestino().getUsuario().equals(user);
             boolean perteneceUsuario = esDestino || esDestino;
+
 //            boolean pertenceUsuario = t.getOrigen().getUsuario().equals(user) ||
 //                                      t.getDestino() != null && t.getDestino().getUsuario().equals(user);
-
             if (esTipoCorrecto && perteneceUsuario){
                 resultado.add(t);
             }
@@ -144,9 +144,22 @@ public class TransaccionService {
         return resultado;
     }
 
-//    public Set<Transaccion> ordenarTransaccionesPorFecha(LocalDateTime fecha){
-//
-//    }
+    public List<Transaccion> ordenarTransaccionesPorFechaAscendente(){
+        List<Transaccion> lista = new ArrayList<>(transaccionRepository.findAll());
+
+        lista.sort(Comparator.comparing(Transaccion::getFecha));
+
+        return lista;
+    }
+
+    // pendiente hacer commit a los cambios
+    public List<Transaccion> ordendarTransaccionesPorFechaD(){
+        List<Transaccion> lista = new ArrayList<>(transaccionRepository.findAll());
+
+        lista.sort(Comparator.comparing(Transaccion::getFecha).reversed());
+
+        return lista;
+    }
 
 
 
