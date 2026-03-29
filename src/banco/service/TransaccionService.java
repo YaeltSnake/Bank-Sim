@@ -12,7 +12,6 @@ import banco.repository.CuentaRepository;
 import banco.repository.TransaccionRepository;
 import banco.repository.UsuarioRepository;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 
@@ -28,87 +27,61 @@ public class TransaccionService {
     }
 
     public void depositar(int cuentaId, double monto) {
-        if (monto <= 0){
-            throw new MontoInvalidoException("Monto no valido");
-        }
-        CuentaBancaria cuenta = cuentaRepository
-                .findCuentaById(cuentaId)
-                .orElseThrow(() -> new CuentaNoEncontradaException("Cuenta no encontrada"));
-
+        validarMonto(monto);
+        CuentaBancaria cuenta = obtenerCuenta(cuentaId);
         cuenta.depositarSaldo(monto);
         transaccionRepository.save(new Transaccion(TipoTransaccion.DEPOSITO, monto, cuenta, null));
     }
 
     public void retirar(int cuentaId, double monto){
-        if (monto <= 0){
-            throw new MontoInvalidoException("Monto no valido");
-        }
-        CuentaBancaria cuenta = cuentaRepository
-                .findCuentaById(cuentaId)
-                .orElseThrow(() -> new CuentaNoEncontradaException("Cuenta no encontrada"));
-        if(cuenta.getSaldo() < monto){
-            throw new SaldoInsuficienteException("Saldo insuficiente");
-        }
-
+        validarMonto(monto);
+        CuentaBancaria cuenta = obtenerCuenta(cuentaId);
+        validarSaldo(cuenta,monto);
         cuenta.retirarSaldo(monto);
-
         transaccionRepository.save(new Transaccion(TipoTransaccion.RETIRO, monto, cuenta, null));
     }
 
     public void transferir(int cuentaIdOrigen, int cuentaIdDestino, double monto){
-        if (monto <= 0){
-            throw new MontoInvalidoException("Monto no valido");
-        }
-
-        CuentaBancaria cuentaOrigen = cuentaRepository
-                .findCuentaById(cuentaIdOrigen)
-                .orElseThrow(() -> new CuentaNoEncontradaException("Cuenta origen no encontrada"));
-        CuentaBancaria cuentaDestino = cuentaRepository
-                .findCuentaById(cuentaIdDestino)
-                .orElseThrow(() -> new CuentaNoEncontradaException("Cuenta destino no encontrada"));
-
-        if (cuentaOrigen.getSaldo() < monto) {
-            throw new SaldoInsuficienteException("Saldo insuficiente");
-        }
+        validarMonto(monto);
+        CuentaBancaria cuentaOrigen = obtenerCuenta(cuentaIdOrigen);
+        CuentaBancaria cuentaDestino = obtenerCuenta(cuentaIdDestino);
+        validarSaldo(cuentaOrigen, monto);
         cuentaOrigen.retirarSaldo(monto);
         cuentaDestino.depositarSaldo(monto);
         transaccionRepository.save(new Transaccion(TipoTransaccion.TRANSFERENCIA, monto, cuentaOrigen, cuentaDestino));
-
     }
 
     public Set<Transaccion> obtenerHistorialPorCuenta(int cuentaId){
-        CuentaBancaria cuenta = cuentaRepository
-                .findCuentaById(cuentaId)
-                .orElseThrow(() -> new CuentaNoEncontradaException("Cuenta no encontrada"));
+        CuentaBancaria cuenta = obtenerCuenta(cuentaId);
         // valdiamos cuenta, regresamos datos con cuenta
         return transaccionRepository.findByCuenta(cuenta);
     }
 
     public Set<Transaccion> obtenerHistorialPorUsuario(int usuarioId){
-        Usuario user = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
+        Usuario user = obtenerUsuario(usuarioId);
         return transaccionRepository.findByUser(user);
     }
 
     public Set<Transaccion> obtenerTransaccionesPorTipo(TipoTransaccion transaccion){
         Set<Transaccion> resultado = new HashSet<>();
-        for (Transaccion t: transaccionRepository.findAll()){
+        for (Transaccion t: obtenerTodas()){
             if (t.getTipo() == transaccion){
                 resultado.add(t);
             }
         }
         return resultado;
     }
+
     public Set<Transaccion> obtenerTransaccionesPorTipoCuenta(TipoTransaccion tipo, int cuentaId){
         Set<Transaccion> resultado = new HashSet<>();
         CuentaBancaria cuenta = cuentaRepository.findCuentaById(cuentaId)
                 .orElseThrow(() -> new CuentaNoEncontradaException("Cuenta no encontrada"));
-        for (Transaccion t: transaccionRepository.findAll()){
-            boolean esTipoCorrecto = t.getTipo() == tipo;
+        for (Transaccion t: obtenerTodas()){
+            boolean esTipo = t.getTipo() == tipo;
             boolean esOrigen = t.getOrigen().equals(cuenta);
             boolean esDestino = t.getDestino() != null && t.getDestino().equals(cuenta);
             boolean perteneceUsuario = esOrigen || esDestino;
-            if (esTipoCorrecto && perteneceUsuario){
+            if (esTipo && perteneceUsuario){
                 resultado.add(t);
             }
         }
@@ -119,14 +92,11 @@ public class TransaccionService {
         Set<Transaccion> resultado = new HashSet<>();
         Usuario user = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
-        for (Transaccion t: transaccionRepository.findAll()){
+        for (Transaccion t: obtenerTodas()){
             boolean esTipoCorrecto = t.getTipo() == tipo;
             boolean esOrigen = t.getOrigen().getUsuario().equals(user);
             boolean esDestino = t.getDestino() != null && t.getDestino().getUsuario().equals(user);
-            boolean perteneceUsuario = esDestino || esDestino;
-
-//            boolean pertenceUsuario = t.getOrigen().getUsuario().equals(user) ||
-//                                      t.getDestino() != null && t.getDestino().getUsuario().equals(user);
+            boolean perteneceUsuario = esOrigen || esDestino;
             if (esTipoCorrecto && perteneceUsuario){
                 resultado.add(t);
             }
@@ -136,7 +106,7 @@ public class TransaccionService {
 
     public Set<Transaccion> obtenerTransaccionesMayoresA(double monto){
         Set<Transaccion> resultado = new HashSet<>();
-        for (Transaccion t: transaccionRepository.findAll()){
+        for (Transaccion t: obtenerTodas()){
             if (t.getMonto() > monto){
                 resultado.add(t);
             }
@@ -152,8 +122,7 @@ public class TransaccionService {
         return lista;
     }
 
-    // pendiente hacer commit a los cambios
-    public List<Transaccion> ordendarTransaccionesPorFechaD(){
+    public List<Transaccion> ordendarTransaccionesPorFechaDescendente(){
         List<Transaccion> lista = new ArrayList<>(transaccionRepository.findAll());
 
         lista.sort(Comparator.comparing(Transaccion::getFecha).reversed());
@@ -161,7 +130,38 @@ public class TransaccionService {
         return lista;
     }
 
+    public Set<Transaccion> obtenerTodas(){
+        return transaccionRepository.findAll();
+    }
 
+    public void validarMonto(double monto){
+        if (monto <= 0){
+            throw new MontoInvalidoException("Monto invalido");
+        }
+
+    }
+
+    // hubo un pequeño cambio en main
+    // sobreescribir los metodos de CuentaBancaria, Transaccion
+    // del cambio del main, optimizar la obtencion de datos de Usuario
+
+    public CuentaBancaria obtenerCuenta(int id){
+        CuentaBancaria cuenta = cuentaRepository.findCuentaById(id)
+                .orElseThrow(() -> new CuentaNoEncontradaException("Cuenta no encontrada"));
+        return cuenta;
+    }
+
+    public Usuario obtenerUsuario(int id){
+        Usuario user = usuarioRepository.findById(id)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
+        return user;
+    }
+
+    public void validarSaldo(CuentaBancaria cuenta, double monto){
+        if (cuenta.getSaldo() < monto){
+            throw new SaldoInsuficienteException("Saldo insuficiente");
+        }
+    }
 
     // Getters
     public CuentaRepository getCuentaRepository() {

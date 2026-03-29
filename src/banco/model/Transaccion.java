@@ -3,6 +3,7 @@ package banco.model;
 import banco.domain.CuentaBancaria;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 public class Transaccion {
     private static int contador = 0;
@@ -45,6 +46,21 @@ public class Transaccion {
                 ", fecha=" + fecha +
                 '}';
     }
+    // Sobreescribir metodos equals/hashcode
+
+    @Override
+    public boolean equals(Object o){
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass())return false;
+        Transaccion transaccion = (Transaccion) o;
+        return Objects.equals(transaccion.getId(), this.id);
+    }
+
+    @Override
+    public int hashCode(){
+        return Objects.hashCode(this.id);
+    }
+
 
     // Getters
     public int getId() {

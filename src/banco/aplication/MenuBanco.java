@@ -48,7 +48,7 @@ public class MenuBanco {
                     }
                     case 2 -> {
                         System.out.print("Ingresa el nombre del usuario: ");
-                        String nameUser = scan.nextLine();
+                        String nameUser = scan.nextLine().toUpperCase().trim();
                         int ageUser = leerEntero(scan,"Ingresa tu edad: ");
                         System.out.print("Crea tu constraseña de usuario: ");
                         String passUser = scan.nextLine();

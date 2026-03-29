@@ -1,6 +1,8 @@
 package banco.domain;
 
 
+import java.util.Objects;
+
 public class CuentaBancaria{
     private double saldo;
     private static int contador = 0;
@@ -11,7 +13,7 @@ public class CuentaBancaria{
         if (saldo < 0){
             throw new IllegalArgumentException("No puedes crear cuentas con saldos menores a 0");
         }
-        this.ID_CUENTA = CuentaBancaria.contador++;
+        this.ID_CUENTA = ++CuentaBancaria.contador;
         this.saldo = saldo;
         this.usuario = usuario;
     }
@@ -25,7 +27,7 @@ public class CuentaBancaria{
             throw new IllegalArgumentException("El monto a depositar debe ser mayor a 0");
         }
         saldo += monto;
-        return getSaldo();
+        return this.saldo;
     }
 
     public double retirarSaldo(double monto){
@@ -35,9 +37,22 @@ public class CuentaBancaria{
         if (monto > saldo) {
             throw new IllegalStateException("Saldo insuficiente");
         }
-        saldo -= monto;
-        return getSaldo();
+        this.saldo -= monto;
+        return this.saldo;
 
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        CuentaBancaria cuenta = (CuentaBancaria) o;
+        return Objects.equals(cuenta.getID_CUENTA(), ID_CUENTA);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(ID_CUENTA);
     }
 
     // Encapsulamiento de datos necesarios
