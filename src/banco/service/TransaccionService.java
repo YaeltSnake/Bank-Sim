@@ -11,8 +11,9 @@ import banco.model.Transaccion;
 import banco.repository.CuentaRepository;
 import banco.repository.TransaccionRepository;
 import banco.repository.UsuarioRepository;
-
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 
 public class TransaccionService {
@@ -62,72 +63,53 @@ public class TransaccionService {
         return transaccionRepository.findByUser(user);
     }
 
-    public Set<Transaccion> obtenerTransaccionesPorTipo(TipoTransaccion transaccion){
-        Set<Transaccion> resultado = new HashSet<>();
-        for (Transaccion t: obtenerTodas()){
-            if (t.getTipo() == transaccion){
-                resultado.add(t);
-            }
-        }
-        return resultado;
+    public List<Transaccion> obtenerTransaccionesPor(Predicate<Transaccion> condicion){
+        return obtenerTodas().stream()
+                .filter(condicion)
+                .collect(Collectors.toList());
+    }
+    //"refactor: introduce Predicate-based filtering and improve stream usage in TransaccionService"
+
+    public List<Transaccion> obtenerTransaccionesPorTipo(TipoTransaccion tipo){
+        return obtenerTransaccionesPor(t -> t.getTipo() == tipo);
     }
 
-    public Set<Transaccion> obtenerTransaccionesPorTipoCuenta(TipoTransaccion tipo, int cuentaId){
-        Set<Transaccion> resultado = new HashSet<>();
-        CuentaBancaria cuenta = cuentaRepository.findCuentaById(cuentaId)
-                .orElseThrow(() -> new CuentaNoEncontradaException("Cuenta no encontrada"));
-        for (Transaccion t: obtenerTodas()){
+    public List<Transaccion> obtenerTransaccionesPorTipoCuenta(TipoTransaccion tipo, int cuentaId){
+        CuentaBancaria cuenta = obtenerCuenta(cuentaId);
+        return obtenerTransaccionesPor(t -> {
             boolean esTipo = t.getTipo() == tipo;
             boolean esOrigen = t.getOrigen().equals(cuenta);
             boolean esDestino = t.getDestino() != null && t.getDestino().equals(cuenta);
             boolean perteneceUsuario = esOrigen || esDestino;
-            if (esTipo && perteneceUsuario){
-                resultado.add(t);
-            }
-        }
-        return resultado;
+            return esTipo && perteneceUsuario;
+        });
     }
 
-    public Set<Transaccion> obtenerTransaccionesPorTipoUsuario(TipoTransaccion tipo, int usuarioId){
-        Set<Transaccion> resultado = new HashSet<>();
-        Usuario user = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
-        for (Transaccion t: obtenerTodas()){
+    public List<Transaccion> obtenerTransaccionesPorTipoUsuario(TipoTransaccion tipo, int usuarioId){
+        Usuario user = obtenerUsuario(usuarioId);
+        return obtenerTransaccionesPor(t -> {
             boolean esTipoCorrecto = t.getTipo() == tipo;
             boolean esOrigen = t.getOrigen().getUsuario().equals(user);
             boolean esDestino = t.getDestino() != null && t.getDestino().getUsuario().equals(user);
             boolean perteneceUsuario = esOrigen || esDestino;
-            if (esTipoCorrecto && perteneceUsuario){
-                resultado.add(t);
-            }
-        }
-        return resultado;
+            return esTipoCorrecto && perteneceUsuario;
+        });
     }
 
-    public Set<Transaccion> obtenerTransaccionesMayoresA(double monto){
-        Set<Transaccion> resultado = new HashSet<>();
-        for (Transaccion t: obtenerTodas()){
-            if (t.getMonto() > monto){
-                resultado.add(t);
-            }
-        }
-        return resultado;
+    public List<Transaccion> obtenerTransaccionesMayoresA(double monto){
+        return obtenerTransaccionesPor(t -> t.getMonto() > monto);
     }
 
     public List<Transaccion> ordenarTransaccionesPorFechaAscendente(){
-        List<Transaccion> lista = new ArrayList<>(transaccionRepository.findAll());
-
-        lista.sort(Comparator.comparing(Transaccion::getFecha));
-
-        return lista;
+        return obtenerTodas().stream()
+                .sorted(Comparator.comparing(Transaccion::getFecha))
+                .collect(Collectors.toList());
     }
 
-    public List<Transaccion> ordendarTransaccionesPorFechaDescendente(){
-        List<Transaccion> lista = new ArrayList<>(transaccionRepository.findAll());
-
-        lista.sort(Comparator.comparing(Transaccion::getFecha).reversed());
-
-        return lista;
+    public List<Transaccion> ordenarTransaccionesPorFechaDescendente(){
+        return obtenerTodas().stream()
+                .sorted(Comparator.comparing(Transaccion::getFecha).
+                        reversed()).collect(Collectors.toList());
     }
 
     public Set<Transaccion> obtenerTodas(){
@@ -168,7 +150,11 @@ public class TransaccionService {
         return this.cuentaRepository;
     }
 
-    public TransaccionRepository getTrasaccionRepository() {
+    public UsuarioRepository getUsuarioRepository() {
+        return this.usuarioRepository;
+    }
+
+    public TransaccionRepository getTransaccionRepository() {
         return this.transaccionRepository;
     }
 }
