@@ -2,15 +2,21 @@ package banco.service;
 
 import banco.domain.CuentaBancaria;
 import banco.domain.Usuario;
+import banco.dto.TransaccionAPIExternaDTO;
+import banco.dto.TransaccionDTO;
+import banco.dto.TransaccionDetalleDTO;
+import banco.dto.TransaccionReporteDTO;
 import banco.exception.CuentaNoEncontradaException;
 import banco.exception.MontoInvalidoException;
 import banco.exception.SaldoInsuficienteException;
 import banco.exception.UsuarioNoEncontradoException;
+import banco.mapper.TransaccionMapper;
 import banco.model.TipoTransaccion;
 import banco.model.Transaccion;
 import banco.repository.CuentaRepository;
 import banco.repository.TransaccionRepository;
 import banco.repository.UsuarioRepository;
+
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -21,10 +27,13 @@ public class TransaccionService {
     private final UsuarioRepository usuarioRepository;
     private final TransaccionRepository transaccionRepository;
 
+    private final TransaccionMapper mapper;
+
     public TransaccionService(CuentaRepository cuenta, UsuarioRepository usuario,TransaccionRepository trasaccion){
         this.cuentaRepository = cuenta;
         this.usuarioRepository = usuario;
         this.transaccionRepository = trasaccion;
+        this.mapper = new TransaccionMapper();
     }
 
     public void depositar(int cuentaId, double monto) {
@@ -64,7 +73,7 @@ public class TransaccionService {
     }
 
     public List<Transaccion> obtenerTransaccionesPor(Predicate<Transaccion> condicion){
-        return obtenerTodas().stream()
+        return findAll().stream()
                 .filter(condicion)
                 .collect(Collectors.toList());
     }
@@ -101,18 +110,81 @@ public class TransaccionService {
     }
 
     public List<Transaccion> ordenarTransaccionesPorFechaAscendente(){
-        return obtenerTodas().stream()
+        return findAll().stream()
                 .sorted(Comparator.comparing(Transaccion::getFecha))
                 .collect(Collectors.toList());
     }
 
     public List<Transaccion> ordenarTransaccionesPorFechaDescendente(){
-        return obtenerTodas().stream()
+        return findAll().stream()
                 .sorted(Comparator.comparing(Transaccion::getFecha).
                         reversed()).collect(Collectors.toList());
     }
 
-    public Set<Transaccion> obtenerTodas(){
+    // Implementacion DTO
+    public List<TransaccionDTO> getTransaccionesDTO(){
+        return findAll().stream().map(mapper::toDTO).collect(Collectors.toList());
+    }
+
+    public List<TransaccionDTO> getTransaccionesFiltradasDTO(Predicate<Transaccion> condicion){
+        return findAll().stream()
+                .filter(condicion)
+                .map(mapper::toDTO).collect(Collectors.toList());
+    }
+
+    public List<TransaccionDTO> getDepositosMayoresA(double monto){
+        return findAll().stream()
+                .filter(t -> t.getMonto() > monto && t.getTipo() == TipoTransaccion.DEPOSITO)
+                .map(mapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Implementacion DetalleDTO
+    public List<TransaccionDetalleDTO> getTransaccionesDetalleDTO(){
+        return findAll().stream()
+                .map(mapper::toDetalleDTO).collect(Collectors.toList());
+    }
+
+    public List<TransaccionDetalleDTO> getTransaccionesDetalleFiltradasDTO(Predicate<Transaccion> condicion){
+        return findAll().stream()
+                .filter(condicion).map(mapper::toDetalleDTO).collect(Collectors.toList());
+    }
+
+    // Implementacion ReporteDTO
+    public List<TransaccionReporteDTO> getReporteTransacciones(){
+        return findAll().stream()
+                .map(mapper::toReporteDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<TransaccionReporteDTO> getReporteTransaccionesFiltradas(Predicate<Transaccion> condicion){
+        return findAll().stream().filter(condicion)
+                .map(mapper::toReporteDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Implementacion APIExternaDTO
+    public List<TransaccionAPIExternaDTO> getTransaccionesAPI(){
+        return findAll().stream()
+                .map(mapper::toAPI)
+                .collect(Collectors.toList());
+    }
+
+    public List<TransaccionAPIExternaDTO> getTransaccionesAPIFiltradas(Predicate<Transaccion> condicion){
+        return findAll().stream()
+                .filter(condicion)
+                .map(mapper::toAPI)
+                .collect(Collectors.toList());
+    }
+
+    // Metodo aplicado en FrontEnd
+    public List<String> getTiposTransacciones(){
+        return findAll().stream()
+                .map(t -> t.getTipo().name())
+                .distinct().collect(Collectors.toList());
+    }
+
+    public Set<Transaccion> findAll(){
         return transaccionRepository.findAll();
     }
 
@@ -128,33 +200,18 @@ public class TransaccionService {
     // del cambio del main, optimizar la obtencion de datos de Usuario
 
     public CuentaBancaria obtenerCuenta(int id){
-        CuentaBancaria cuenta = cuentaRepository.findCuentaById(id)
+        return cuentaRepository.findCuentaById(id)
                 .orElseThrow(() -> new CuentaNoEncontradaException("Cuenta no encontrada"));
-        return cuenta;
     }
 
     public Usuario obtenerUsuario(int id){
-        Usuario user = usuarioRepository.findById(id)
+        return usuarioRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
-        return user;
     }
 
     public void validarSaldo(CuentaBancaria cuenta, double monto){
         if (cuenta.getSaldo() < monto){
             throw new SaldoInsuficienteException("Saldo insuficiente");
         }
-    }
-
-    // Getters
-    public CuentaRepository getCuentaRepository() {
-        return this.cuentaRepository;
-    }
-
-    public UsuarioRepository getUsuarioRepository() {
-        return this.usuarioRepository;
-    }
-
-    public TransaccionRepository getTransaccionRepository() {
-        return this.transaccionRepository;
     }
 }

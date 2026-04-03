@@ -2,10 +2,8 @@ package banco.aplication;
 
 import banco.domain.CuentaBancaria;
 import banco.domain.Usuario;
-import banco.repository.CuentaRepository;
-import banco.repository.CuentaRepositoryMemoria;
-import banco.repository.UsuarioRepository;
-import banco.repository.UsuarioRepositoryMemoria;
+import banco.repository.*;
+import banco.service.TransaccionService;
 
 import java.util.Scanner;
 
@@ -22,6 +20,9 @@ public class MenuBanco {
         UsuarioRepository usuarioRepo = new UsuarioRepositoryMemoria();
         CuentaRepository cuentaRepo = new CuentaRepositoryMemoria();
         SistemaBancario sistem = new SistemaBancario(usuarioRepo,cuentaRepo);
+        TransaccionRepository transaccionRepo = new TransaccionRepositoryMemoria();
+        TransaccionController controller = new TransaccionController(cuentaRepo, usuarioRepo, transaccionRepo);
+        controller.obtenerTransacciones();
 
         System.out.println("*** BANCO LUX ***");
         do{
